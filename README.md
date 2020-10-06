@@ -1,6 +1,6 @@
 # FL-Server
 
-Client for federated learning demo
+Server for federated learning demo
 
 ## Arguments
 * Download Folder (Path where CIFAR dataset is downloaded)
