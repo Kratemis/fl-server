@@ -1,4 +1,4 @@
-# FL-Client
+# FL-Server
 
 Client for federated learning demo
 
