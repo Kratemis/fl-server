@@ -151,6 +151,24 @@ def upload_to_aws(local_file, bucket, s3_file):
         return False
 
 
+def download_from_aws(remote_path, bucket, local_path):
+    logging.info("Downloading from S3 bucket")
+
+    s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
+                      aws_secret_access_key=args.s3_secret_key)
+
+    try:
+        s3.download_file(bucket, remote_path, local_path)
+        logging.info("Upload Successful")
+        return True
+    except FileNotFoundError:
+        logging.error("The file was not found")
+        return False
+    except NoCredentialsError:
+        logging.error("Credentials not available")
+        return False
+
+
 # Setup
 models = []
 state_dicts = []
@@ -164,7 +182,9 @@ try:
 
     counter = 0
     for item in dir_items:
-        model = torch.load(args.s3_folder + "/" + item)
+        download_from_aws(args.s3_folder, args.bucket, args.local_folder + "/" + item)
+
+        model = torch.load(args.local_folder + "/" + item)
         models.append(model)
         sd = model.state_dict()
         state_dicts.append(sd)
