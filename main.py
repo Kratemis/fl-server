@@ -17,7 +17,8 @@ parser.add_argument('--local-client-models-folder', help='Local folder for clien
 parser.add_argument('--client-models', help='Comma-separated list of client models to average', required=True)
 parser.add_argument('--config-file', help='Configuration file with ML parameters', required=True)
 parser.add_argument('--job-id', help='Unique Job ID', required=True)
-parser.add_argument('--bucket', help='Bucket name', required=True)
+parser.add_argument('--clients-bucket', help='Bucket name for client models', required=True)
+parser.add_argument('--main-bucket', help='Bucket name for main models', required=True)
 parser.add_argument('--s3-access-key', help='Credentials for AWS', required=False)
 parser.add_argument('--s3-secret-key', help='Credentials for AWS',  required=False)
 parser.add_argument('-d', '--debug', help="Debug mode for the script")
@@ -188,7 +189,7 @@ try:
     counter = 0
     for item in dir_items:
         logging.debug("Complete remote path: " + args.local_client_models_folder + "/" + item)
-        download_from_aws(args.bucket, args.s3_client_models_folder + "/" + item, args.local_client_models_folder + "/" + item)
+        download_from_aws(args.clients_bucket, args.s3_client_models_folder + "/" + item, args.local_client_models_folder + "/" + item)
         # Checksum check here?
         logging.debug("Loading model...")
         model = torch.load(args.local_client_models_folder + "/" + item)
@@ -219,7 +220,7 @@ FINAL_MODEL_NAME = 'main_model.pt'
 FINAL_MODEL_PATH = args.local_client_models_folder + '/' + FINAL_MODEL_NAME
 
 torch.save(federated_model.state_dict(), FINAL_MODEL_PATH)
-uploaded = upload_to_aws(FINAL_MODEL_PATH, args.bucket,
+uploaded = upload_to_aws(FINAL_MODEL_PATH, args.main_bucket,
                          args.s3_main_models_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
 
 logging.info("Model Saved")
