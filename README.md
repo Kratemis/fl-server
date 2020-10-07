@@ -3,7 +3,6 @@
 Server for federated learning demo
 
 ## Arguments
-* Download Folder (Path where CIFAR dataset is downloaded)
 * Local Folder (Path where local model is generated)
 * Config File (Configuration file path for the app)
 * Job Id (Unique ID for the process)
@@ -12,7 +11,6 @@ Server for federated learning demo
 * S3 Secret Key
 * S3 Folder
 * Models (List of models that are going to be averaged)
-* Main Model Path (Path for the main model)
 * Debug (Debug mode)
 
 ## Example

@@ -11,16 +11,15 @@ import time
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--download-folder', required=True)
-parser.add_argument('--local-folder', required=True)
-parser.add_argument('--s3-folder', required=True)
-parser.add_argument('--models', required=True)
-parser.add_argument('--config-file', required=True)
-parser.add_argument('--job-id', required=True)
-parser.add_argument('--bucket', required=True)
-parser.add_argument('--s3-access-key', required=False)
-parser.add_argument('--s3-secret-key', required=False)
-parser.add_argument('--main-model-path', required=True)
+parser.add_argument('--s3-client-models-folder', help='S3 folder for client models', required=True)
+parser.add_argument('--s3-main-models-folder', help='S3 folder for main models', required=True)
+parser.add_argument('--local-client-models-folder', help='Local folder for client models', required=True)
+parser.add_argument('--client-models', help='Comma-separated list of client models to average', required=True)
+parser.add_argument('--config-file', help='Configuration file with ML parameters', required=True)
+parser.add_argument('--job-id', help='Unique Job ID', required=True)
+parser.add_argument('--bucket', help='Bucket name', required=True)
+parser.add_argument('--s3-access-key', help='Credentials for AWS', required=False)
+parser.add_argument('--s3-secret-key', help='Credentials for AWS',  required=False)
 parser.add_argument('-d', '--debug', help="Debug mode for the script")
 args = parser.parse_args()
 
@@ -29,8 +28,7 @@ if args.debug:
 else:
     logging.basicConfig(level=logging.INFO)
 
-FINAL_MODEL = 'main_model.pt'
-FINAL_MODEL_PATH = args.local_folder + '/' + 'main_model.pt'
+
 
 
 class Net(nn.Module):
@@ -182,18 +180,18 @@ state_dicts = []
 try:
     logging.info("Loading all models")
 
-    dir_items = args.models.split(',')
+    dir_items = args.client_models.split(',')
 
     logging.debug("Models found:")
     logging.debug(dir_items)
 
     counter = 0
     for item in dir_items:
-        logging.debug("Complete remote path: " + args.local_folder + "/" + item)
-        download_from_aws(args.bucket, args.s3_folder + "/" + item, args.local_folder + "/" + item)
+        logging.debug("Complete remote path: " + args.local_client_models_folder + "/" + item)
+        download_from_aws(args.bucket, args.s3_client_models_folder + "/" + item, args.local_client_models_folder + "/" + item)
         # Checksum check here?
         logging.debug("Loading model...")
-        model = torch.load(args.local_folder + "/" + item)
+        model = torch.load(args.local_client_models_folder + "/" + item)
         logging.debug("Appending model to models array")
         models.append(model)
         logging.debug("Get state dict of the model...")
@@ -201,7 +199,7 @@ try:
         logging.debug("Appending model to state_dicts array")
         state_dicts.append(sd)
 
-        # torch.save(model.state_dict(), args.local_folder + "/model_" + str(counter) + '.pt')
+        # torch.save(model.state_dict(), args.local_client_models_folder + "/model_" + str(counter) + '.pt')
         counter = counter + 1
 
 except Exception as e:
@@ -216,8 +214,12 @@ models_dict = {i: models[i] for i in range(0, len(models))}
 logging.debug("Models dict: ")
 logging.debug(models_dict)
 federated_model = federated_avg(models_dict)
+
+FINAL_MODEL_NAME = 'main_model.pt'
+FINAL_MODEL_PATH = args.local_client_models_folder + '/' + FINAL_MODEL_NAME
+
 torch.save(federated_model.state_dict(), FINAL_MODEL_PATH)
 uploaded = upload_to_aws(FINAL_MODEL_PATH, args.bucket,
-                         args.s3_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL)
+                         args.s3_main_models_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
 
 logging.info("Model Saved")
