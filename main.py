@@ -7,6 +7,7 @@ import argparse
 import logging
 import boto3
 from botocore.exceptions import NoCredentialsError
+import time
 
 parser = argparse.ArgumentParser()
 
@@ -17,8 +18,8 @@ parser.add_argument('--models', required=True)
 parser.add_argument('--config-file', required=True)
 parser.add_argument('--job-id', required=True)
 parser.add_argument('--bucket', required=True)
-parser.add_argument('--s3-access-key', required=True)
-parser.add_argument('--s3-secret-key', required=True)
+parser.add_argument('--s3-access-key', required=False)
+parser.add_argument('--s3-secret-key', required=False)
 parser.add_argument('--main-model-path', required=True)
 parser.add_argument('-d', '--debug', help="Debug mode for the script")
 args = parser.parse_args()
@@ -136,6 +137,9 @@ def federated_avg(models: Dict[Any, torch.nn.Module]) -> torch.nn.Module:
 def upload_to_aws(local_file, bucket, s3_file):
     logging.info("Uploading to S3 bucket ")
 
+    logging.debug("Local File: " + local_file)
+    logging.debug("Bucket: " + bucket)
+    logging.debug("S3 File: " + s3_file)
     s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
                       aws_secret_access_key=args.s3_secret_key)
 
@@ -151,15 +155,18 @@ def upload_to_aws(local_file, bucket, s3_file):
         return False
 
 
-def download_from_aws(remote_path, bucket, local_path):
+def download_from_aws(bucket, remote_path, local_path):
     logging.info("Downloading from S3 bucket")
 
     s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
                       aws_secret_access_key=args.s3_secret_key)
 
     try:
+        logging.debug("Bucket: " + bucket)
+        logging.debug("Remote Path: " + remote_path)
+        logging.debug("Local Path: " + local_path)
         s3.download_file(bucket, remote_path, local_path)
-        logging.info("Upload Successful")
+        logging.info("Download Successful")
         return True
     except FileNotFoundError:
         logging.error("The file was not found")
@@ -182,14 +189,19 @@ try:
 
     counter = 0
     for item in dir_items:
-        download_from_aws(args.s3_folder, args.bucket, args.local_folder + "/" + item)
-
+        logging.debug("Complete remote path: " + args.local_folder + "/" + item)
+        download_from_aws(args.bucket, args.s3_folder + "/" + item, args.local_folder + "/" + item)
+        # Checksum check here?
+        logging.debug("Loading model...")
         model = torch.load(args.local_folder + "/" + item)
+        logging.debug("Appending model to models array")
         models.append(model)
+        logging.debug("Get state dict of the model...")
         sd = model.state_dict()
+        logging.debug("Appending model to state_dicts array")
         state_dicts.append(sd)
 
-        torch.save(model.state_dict(), args.local_folder + str(counter) + '.pt')
+        # torch.save(model.state_dict(), args.local_folder + "/model_" + str(counter) + '.pt')
         counter = counter + 1
 
 except Exception as e:
@@ -198,11 +210,14 @@ except Exception as e:
 
 averages = {}
 
-logging.debug("Averaging " + str(len(models)) + "...")
+logging.info("Averaging " + str(len(models)) + "...")
 
 models_dict = {i: models[i] for i in range(0, len(models))}
+logging.debug("Models dict: ")
+logging.debug(models_dict)
 federated_model = federated_avg(models_dict)
 torch.save(federated_model.state_dict(), FINAL_MODEL_PATH)
-uploaded = upload_to_aws(FINAL_MODEL_PATH, args.bucket, args.s3_folder + '/' + FINAL_MODEL)
+uploaded = upload_to_aws(FINAL_MODEL_PATH, args.bucket,
+                         args.s3_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL)
 
 logging.info("Model Saved")
