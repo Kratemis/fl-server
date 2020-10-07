@@ -3,7 +3,6 @@
 Server for federated learning demo
 
 ## Arguments
-* Download Folder (Path where CIFAR dataset is downloaded)
 * Local Folder (Path where local model is generated)
 * Config File (Configuration file path for the app)
 * Job Id (Unique ID for the process)
@@ -12,10 +11,8 @@ Server for federated learning demo
 * S3 Secret Key
 * S3 Folder
 * Models (List of models that are going to be averaged)
-* Main Model Path (Path for the main model)
 * Debug (Debug mode)
 
 ## Example
 ```bash
-python main.py --download-folder "/tmp" --local-folder "/storage" --config-file "/config/config.json" --job-id 13434 --bucket "911639421134-us-east-1-mybucket" --s3-access-key "1f421f144f14fgt3hth52" --s3-secret-key "4252452g253g532g3gg55g3g35vt4oim35" --main-model-path "/storage/main_model.pt" --debug
-```
+python main.py --s3-client-models-folder "clients" --s3-main-models-folder "main" --local-client-models-folder "./storage" --client-models "main_model.pt" --config-file "" --job-id 245425 --main-bucket "MY_BUCKET_NAME" --clients-bucket "ANOTHER_BUCKET_NAME"```
