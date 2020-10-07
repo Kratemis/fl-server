@@ -3,15 +3,17 @@
 Server for federated learning demo
 
 ## Arguments
-* Local Folder (Path where local model is generated)
-* Config File (Configuration file path for the app)
-* Job Id (Unique ID for the process)
-* Bucket (S3 Bucket name)
-* S3 Access Key
-* S3 Secret Key
-* S3 Folder
-* Models (List of models that are going to be averaged)
-* Debug (Debug mode)
+* --s3-client-models-folder (S3 folder for client models)
+* --s3-main-models-folder (S3 folder for main models)
+* --local-client-models-folder (Local folder for client models)
+* --client-models (Comma-separated list of client models to average)
+* --config-file (Configuration file with ML parameters)
+* --job-id (Unique Job ID)
+* --clients-bucket (Bucket name for client models)
+* --main-bucket (Bucket name for main models)
+* --s3-access-key (Credentials for AWS)
+* --s3-secret-key (Credentials for AWS)
+* --debug (Debug mode)
 
 ## Example
 ```bash
