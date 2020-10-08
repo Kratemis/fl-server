@@ -219,7 +219,7 @@ federated_model = federated_avg(models_dict)
 FINAL_MODEL_NAME = 'main_model.pt'
 FINAL_MODEL_PATH = args.local_client_models_folder + '/' + FINAL_MODEL_NAME
 
-torch.save(federated_model.state_dict(), FINAL_MODEL_PATH)
+torch.save(federated_model, FINAL_MODEL_PATH)
 uploaded = upload_to_aws(FINAL_MODEL_PATH, args.main_bucket,
                          args.s3_main_models_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
 
