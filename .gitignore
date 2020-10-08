@@ -132,4 +132,4 @@ dmypy.json
 .idea
 
 #App
-./storage
+./storage/*
