@@ -15,7 +15,6 @@ parser.add_argument('--s3-client-models-folder', help='S3 folder for client mode
 parser.add_argument('--s3-main-models-folder', help='S3 folder for main models', required=True)
 parser.add_argument('--local-client-models-folder', help='Local folder for client models', required=True)
 parser.add_argument('--client-models', help='Comma-separated list of client models to average', required=True)
-parser.add_argument('--config-file', help='Configuration file with ML parameters', required=True)
 parser.add_argument('--job-id', help='Unique Job ID', required=True)
 parser.add_argument('--clients-bucket', help='Bucket name for client models', required=True)
 parser.add_argument('--main-bucket', help='Bucket name for main models', required=True)
