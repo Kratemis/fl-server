@@ -5,7 +5,7 @@ Server for federated learning demo
 ## Arguments
 * --s3-client-models-folder (S3 folder for client models)
 * --s3-main-models-folder (S3 folder for main models)
-* --local-client-models-folder (Local folder for client models)
+* --local-folder (Local folder)
 * --client-models (Comma-separated list of client models to average)
 * --job-id (Unique Job ID)
 * --clients-bucket (Bucket name for client models)
