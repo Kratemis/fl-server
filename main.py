@@ -8,7 +8,8 @@ import boto3
 from botocore.exceptions import NoCredentialsError
 import time
 import requests
-
+import os
+import json
 
 def load_config():
     return json.loads(str(os.environ['CONFIG']))
@@ -115,6 +116,46 @@ def federated_avg(models: Dict[Any, torch.nn.Module]) -> torch.nn.Module:
     return model
 
 
+def get_temporary_credentials():
+    url = 'https://' + config['credentials']["credentials_endpoint"] + \
+          '/role-aliases/' + config['credentials']["role_alias"] + '/credentials'
+
+    headers = {
+        'x-amzn-iot-thingname': config['credentials']["thing_name"],
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        verify=config['credentials']["root_ca_path"],
+        cert=(
+            config['credentials']["certificate_path"],
+            config['credentials']["private_key_path"]
+        )
+    )
+
+    json_response = json.loads(response.content)
+
+    ACCESS_KEY = json_response['credentials']['accessKeyId']
+    SECRET_KEY = json_response['credentials']['secretAccessKey']
+    SESSION_TOKEN = json_response['credentials']['sessionToken']
+
+    os.environ['AWS_ACCESS_KEY_ID'] = ACCESS_KEY
+    os.environ['AWS_SECRET_ACCESS_KEY'] = SECRET_KEY
+    os.environ['AWS_SESSION_TOKEN'] = SESSION_TOKEN
+
+    session = boto3.Session(
+        aws_access_key_id=ACCESS_KEY,
+        aws_secret_access_key=SECRET_KEY,
+        aws_session_token=SESSION_TOKEN,
+    )
+
+    # print(session.get_credentials().access_key)
+    # print(session.get_credentials().secret_key)
+
+    return session
+
+
 def upload_to_aws(local_file, bucket, s3_file):
     logging.info("Uploading to S3 bucket ")
 
@@ -156,6 +197,7 @@ def download_from_aws(bucket, remote_path, local_path):
 
 
 config = load_config()
+get_temporary_credentials()
 
 if config['metadata']['debug']:
     logging.basicConfig(level=logging.DEBUG)
