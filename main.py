@@ -30,6 +30,10 @@ else:
     logging.basicConfig(level=logging.INFO)
 
 
+device = torch.device("cuda:0" if config['config']['use_cuda'] else "cpu")
+
+logging.info("DEVICE: ")
+logging.info(device)
 
 
 class Net(nn.Module):
@@ -195,6 +199,7 @@ try:
         # Checksum check here?
         logging.debug("Loading model...")
         model = torch.load(args.local_folder + "/" + item)
+        model.to(device) #GPU
         logging.debug("Appending model to models array")
         models.append(model)
         logging.debug("Get state dict of the model...")
@@ -214,9 +219,12 @@ averages = {}
 logging.info("Averaging " + str(len(models)) + "...")
 
 models_dict = {i: models[i] for i in range(0, len(models))}
+
 logging.debug("Models dict: ")
 logging.debug(models_dict)
+
 federated_model = federated_avg(models_dict)
+federated_model.to(device)
 
 FINAL_MODEL_NAME = 'main_model.pt'
 FINAL_MODEL_PATH = args.local_folder + '/' + FINAL_MODEL_NAME
