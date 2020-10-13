@@ -21,6 +21,7 @@ parser.add_argument('--clients-bucket', help='Bucket name for client models', re
 parser.add_argument('--main-bucket', help='Bucket name for main models', required=True)
 parser.add_argument('--s3-access-key', help='Credentials for AWS', required=False)
 parser.add_argument('--s3-secret-key', help='Credentials for AWS',  required=False)
+parser.add_argument('--s3-session-token', help='Credentials for AWS', required=False)
 parser.add_argument('-d', '--debug', help="Debug mode for the script")
 args = parser.parse_args()
 
@@ -140,7 +141,8 @@ def upload_to_aws(local_file, bucket, s3_file):
     logging.debug("Bucket: " + bucket)
     logging.debug("S3 File: " + s3_file)
     s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
-                      aws_secret_access_key=args.s3_secret_key)
+                      aws_secret_access_key=args.s3_secret_key,
+                      aws_session_token=args.s3_session_token)
 
     try:
         s3.upload_file(local_file, bucket, s3_file)
@@ -158,7 +160,8 @@ def download_from_aws(bucket, remote_path, local_path):
     logging.info("Downloading from S3 bucket")
 
     s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
-                      aws_secret_access_key=args.s3_secret_key)
+                      aws_secret_access_key=args.s3_secret_key,
+                      aws_session_token=args.s3_session_token)
 
     try:
         logging.debug("Bucket: " + bucket)

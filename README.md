@@ -13,6 +13,7 @@ Server for federated learning demo
 * --main-bucket (Bucket name for main models)
 * --s3-access-key (Credentials for AWS)
 * --s3-secret-key (Credentials for AWS)
+* --s3-session-tolen (Credentials for AWS)
 * --debug (Debug mode)
 
 ## Example
