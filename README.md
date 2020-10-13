@@ -17,4 +17,4 @@ Server for federated learning demo
 
 ## Example
 ```bash
-python main.py --s3-client-models-folder "clients" --s3-main-models-folder "main" --local-client-models-folder "./storage" --client-models "main_model.pt" --config-file "" --job-id 245425 --main-bucket "MY_BUCKET_NAME" --clients-bucket "ANOTHER_BUCKET_NAME"```
+python main.py --s3-client-models-folder "clients" --s3-main-models-folder "main" --local-folder "/data" --client-models "main_model.pt" --config-file "" --job-id 245425 --main-bucket "MY_BUCKET_NAME" --clients-bucket "ANOTHER_BUCKET_NAME"```
