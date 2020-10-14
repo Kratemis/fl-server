@@ -6,8 +6,6 @@ from typing import Any
 import logging
 import boto3
 from botocore.exceptions import NoCredentialsError
-import time
-import requests
 import os
 import json
 
@@ -164,6 +162,11 @@ if config['metadata']['debug']:
 else:
     logging.basicConfig(level=logging.INFO)
 
+for local_model_path in [config['input_model']['local_path'], config['output']['local_path']]:
+    if not os.path.exists(local_model_path):
+        logging.info("Creating directory")
+        os.makedirs(local_model_path)
+
 models = []
 state_dicts = []
 try:
@@ -177,7 +180,7 @@ try:
     counter = 0
     for item in dir_items:
         logging.debug("Complete remote path: " + config['input_models']['local_path'] + "/" + item)
-        download_from_aws(config['input_models']['s3_s3_bucket'], config['input_models']['s3_key'] + "/" + item,
+        download_from_aws(config['input_models']['s3_s3_bucket'], config['input_models']['s3_key'],
                           config['input_models']['local_path'] + "/" + item)
         # Checksum check here?
         logging.debug("Loading model...")
@@ -210,6 +213,6 @@ FINAL_MODEL_PATH = config['input_models']['local_path'] + '/' + FINAL_MODEL_NAME
 
 torch.save(federated_model, FINAL_MODEL_PATH)
 uploaded = upload_to_aws(FINAL_MODEL_PATH, config['output']['s3_bucket'],
-                         config['output']['s3_key'] + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
+                         config['output']['s3_key'])
 
 logging.info("Model Saved")
