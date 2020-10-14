@@ -3,33 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict
 from typing import Any
-import argparse
 import logging
 import boto3
 from botocore.exceptions import NoCredentialsError
 import time
+import requests
+import os
+import json
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--s3-client-models-folder', help='S3 folder for client models', required=True)
-parser.add_argument('--s3-main-models-folder', help='S3 folder for main models', required=True)
-parser.add_argument('--local-folder', help='Local folder', required=True)
-parser.add_argument('--client-models', help='Comma-separated list of client models to average', required=True)
-parser.add_argument('--job-id', help='Unique Job ID', required=True)
-parser.add_argument('--clients-bucket', help='Bucket name for client models', required=True)
-parser.add_argument('--main-bucket', help='Bucket name for main models', required=True)
-parser.add_argument('--s3-access-key', help='Credentials for AWS', required=False)
-parser.add_argument('--s3-secret-key', help='Credentials for AWS',  required=False)
-parser.add_argument('--s3-session-token', help='Credentials for AWS', required=False)
-parser.add_argument('-d', '--debug', help="Debug mode for the script")
-args = parser.parse_args()
-
-if args.debug:
-    logging.basicConfig(level=logging.DEBUG)
-else:
-    logging.basicConfig(level=logging.INFO)
-
-
+def load_config():
+    return json.loads(str(os.environ['CONFIG']))
 
 
 class Net(nn.Module):
@@ -133,15 +116,53 @@ def federated_avg(models: Dict[Any, torch.nn.Module]) -> torch.nn.Module:
     return model
 
 
+def get_temporary_credentials():
+    url = 'https://' + config['credentials']["credentials_endpoint"] + \
+          '/role-aliases/' + config['credentials']["role_alias"] + '/credentials'
+
+    headers = {
+        'x-amzn-iot-thingname': config['credentials']["thing_name"],
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        verify=config['credentials']["root_ca_path"],
+        cert=(
+            config['credentials']["certificate_path"],
+            config['credentials']["private_key_path"]
+        )
+    )
+
+    json_response = json.loads(response.content)
+
+    ACCESS_KEY = json_response['credentials']['accessKeyId']
+    SECRET_KEY = json_response['credentials']['secretAccessKey']
+    SESSION_TOKEN = json_response['credentials']['sessionToken']
+
+    os.environ['AWS_ACCESS_KEY_ID'] = ACCESS_KEY
+    os.environ['AWS_SECRET_ACCESS_KEY'] = SECRET_KEY
+    os.environ['AWS_SESSION_TOKEN'] = SESSION_TOKEN
+
+    session = boto3.Session(
+        aws_access_key_id=ACCESS_KEY,
+        aws_secret_access_key=SECRET_KEY,
+        aws_session_token=SESSION_TOKEN,
+    )
+
+    # print(session.get_credentials().access_key)
+    # print(session.get_credentials().secret_key)
+
+    return session
+
+
 def upload_to_aws(local_file, bucket, s3_file):
     logging.info("Uploading to S3 bucket ")
 
     logging.debug("Local File: " + local_file)
     logging.debug("Bucket: " + bucket)
     logging.debug("S3 File: " + s3_file)
-    s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
-                      aws_secret_access_key=args.s3_secret_key,
-                      aws_session_token=args.s3_session_token)
+    s3 = boto3.client('s3')
 
     try:
         s3.upload_file(local_file, bucket, s3_file)
@@ -158,9 +179,7 @@ def upload_to_aws(local_file, bucket, s3_file):
 def download_from_aws(bucket, remote_path, local_path):
     logging.info("Downloading from S3 bucket")
 
-    s3 = boto3.client('s3', aws_access_key_id=args.s3_access_key,
-                      aws_secret_access_key=args.s3_secret_key,
-                      aws_session_token=args.s3_session_token)
+    s3 = boto3.client('s3')
 
     try:
         logging.debug("Bucket: " + bucket)
@@ -177,24 +196,32 @@ def download_from_aws(bucket, remote_path, local_path):
         return False
 
 
-# Setup
+config = load_config()
+get_temporary_credentials()
+
+if config['metadata']['debug']:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+
 models = []
 state_dicts = []
 try:
     logging.info("Loading all models")
 
-    dir_items = args.client_models.split(',')
+    dir_items = config['input_models']['model_list'].split(',')
 
     logging.debug("Models found:")
     logging.debug(dir_items)
 
     counter = 0
     for item in dir_items:
-        logging.debug("Complete remote path: " + args.local_folder + "/" + item)
-        download_from_aws(args.clients_bucket, args.s3_client_models_folder + "/" + item, args.local_folder + "/" + item)
+        logging.debug("Complete remote path: " + config['input_models']['local_path'] + "/" + item)
+        download_from_aws(config['input_models']['s3_s3_bucket'], config['input_models']['s3_key'] + "/" + item,
+                          config['input_models']['local_path'] + "/" + item)
         # Checksum check here?
         logging.debug("Loading model...")
-        model = torch.load(args.local_folder + "/" + item)
+        model = torch.load(config['input_models']['local_path'] + "/" + item)
         logging.debug("Appending model to models array")
         models.append(model)
         logging.debug("Get state dict of the model...")
@@ -202,7 +229,7 @@ try:
         logging.debug("Appending model to state_dicts array")
         state_dicts.append(sd)
 
-        # torch.save(model.state_dict(), args.local_folder + "/model_" + str(counter) + '.pt')
+        # torch.save(model.state_dict(), config['input_models']['local_path'] + "/model_" + str(counter) + '.pt')
         counter = counter + 1
 
 except Exception as e:
@@ -219,10 +246,10 @@ logging.debug(models_dict)
 federated_model = federated_avg(models_dict)
 
 FINAL_MODEL_NAME = 'main_model.pt'
-FINAL_MODEL_PATH = args.local_folder + '/' + FINAL_MODEL_NAME
+FINAL_MODEL_PATH = config['input_models']['local_path'] + '/' + FINAL_MODEL_NAME
 
 torch.save(federated_model, FINAL_MODEL_PATH)
-uploaded = upload_to_aws(FINAL_MODEL_PATH, args.main_bucket,
-                         args.s3_main_models_folder + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
+uploaded = upload_to_aws(FINAL_MODEL_PATH, config['output']['s3_bucket'],
+                         config['output']['s3_key'] + '/' + str(int(time.time())) + '_' + FINAL_MODEL_NAME)
 
 logging.info("Model Saved")
